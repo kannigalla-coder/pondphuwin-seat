@@ -213,10 +213,33 @@
   }
   .modal input:focus{border-color:var(--accent-cyan);}
   .modal input::placeholder{color:var(--text-dim);}
+  .zone-field{position:relative;margin-bottom:16px;}
+  .zone-field input{margin-bottom:0 !important;}
+  .zone-menu{
+    position:absolute;
+    left:0;right:0;
+    top:calc(100% + 4px);
+    z-index:30;
+    max-height:190px;
+    overflow-y:auto;
+    background:#241350;
+    border:1px solid var(--panel-line);
+    border-radius:12px;
+    box-shadow:0 14px 34px rgba(0,0,0,0.55);
+    display:none;
+  }
+  .zone-menu.show{display:block;}
+  .zone-opt{
+    padding:11px 14px;
+    font-size:15px;
+    color:var(--text-main);
+    cursor:pointer;
+  }
+  .zone-opt:hover,.zone-opt.active{background:rgba(255,255,255,0.08);}
   .zone-hint{
     font-size:11px;
     color:var(--accent-pink);
-    margin:-10px 0 14px;
+    margin:-6px 0 14px;
     min-height:14px;
   }
   .modal-actions{display:flex;gap:10px;}
@@ -306,8 +329,10 @@
       </div>
       <input type="file" id="photoInput" accept="image/*" hidden>
       <label>โซนที่นั่ง</label>
-      <input type="text" id="zoneInput" list="zoneList" maxlength="10" placeholder="พิมพ์โซน เช่น A3, SG, J">
-      <datalist id="zoneList"></datalist>
+      <div class="zone-field" id="zoneField">
+        <input type="text" id="zoneInput" autocomplete="off" maxlength="10" placeholder="พิมพ์โซน เช่น A3, SG, J">
+        <div class="zone-menu" id="zoneMenu"></div>
+      </div>
       <div class="zone-hint" id="zoneHint"></div>
       <label>ชื่อ / ชื่อเล่น</label>
       <input type="text" id="nameInput" maxlength="24" placeholder="เช่น มิว โซน A3">
@@ -346,7 +371,7 @@
   const photoPreview = document.getElementById('photoPreview');
   const photoPlaceholder = document.getElementById('photoPlaceholder');
   const zoneInput = document.getElementById('zoneInput');
-  const zoneList = document.getElementById('zoneList');
+  const zoneMenu = document.getElementById('zoneMenu');
   const zoneHint = document.getElementById('zoneHint');
   const nameInput = document.getElementById('nameInput');
   const dateInput = document.getElementById('dateInput');
@@ -376,15 +401,35 @@
     'M':[76,87], 'N':[85,80], 'O':[91,72],
     'P':[94,64], 'Q':[95,55], 'R':[94,46], 'S':[92,36]
   };
-  (function populateZoneList(){
-    Object.keys(ZONE_COORDS).forEach(z=>{
-      const opt = document.createElement('option');
-      opt.value = z;
-      zoneList.appendChild(opt);
+  const ZONE_KEYS = Object.keys(ZONE_COORDS);
+  function normZone(raw){
+    return raw.trim().toUpperCase().replace(/\s+/g,'').replace(/^ZONE/,'').replace(/^โซน/,'');
+  }
+  function renderZoneMenu(){
+    const q = normZone(zoneInput.value);
+    const matches = ZONE_KEYS.filter(z => z.replace(/\s+/g,'').includes(q));
+    zoneMenu.innerHTML = '';
+    if(matches.length === 0){ zoneMenu.classList.remove('show'); return; }
+    matches.forEach(z=>{
+      const opt = document.createElement('div');
+      opt.className = 'zone-opt';
+      opt.textContent = z;
+      // mousedown (ไม่ใช่ click) เพื่อให้เลือกได้ก่อน input จะ blur
+      opt.addEventListener('mousedown', (e)=>{
+        e.preventDefault();
+        zoneInput.value = z;
+        zoneMenu.classList.remove('show');
+        zoneHint.textContent = '';
+        checkFormValid();
+      });
+      zoneMenu.appendChild(opt);
     });
-  })();
+    zoneMenu.classList.add('show');
+  }
+  zoneInput.addEventListener('focus', renderZoneMenu);
+  zoneInput.addEventListener('blur', ()=> zoneMenu.classList.remove('show'));
   function lookupZone(raw){
-    const key = raw.trim().toUpperCase().replace(/\s+/g,'').replace(/^ZONE/,'').replace(/^โซน/,'');
+    const key = normZone(raw);
     return ZONE_COORDS[key] || null;
   }
 
@@ -495,6 +540,7 @@
     modalOpen = true;
     zoneInput.value = '';
     zoneHint.textContent = '';
+    zoneMenu.classList.remove('show');
     nameInput.value = '';
     dateInput.value = '';
     twitterInput.value = '';
@@ -546,6 +592,7 @@
   dateInput.addEventListener('input', checkFormValid);
   twitterInput.addEventListener('input', checkFormValid);
   zoneInput.addEventListener('input', ()=>{
+    renderZoneMenu();
     if(zoneInput.value.trim() && !lookupZone(zoneInput.value)){
       zoneHint.textContent = 'ไม่พบโซนนี้ในผัง ลองพิมพ์เช่น A3, SG, C1, J';
     }else{

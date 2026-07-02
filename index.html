@@ -11,7 +11,7 @@
   <div class="app">
     <div class="hero">
       <p class="eyebrow">มาหาเพื่อนจากคอนเสิร์ต</p>
-      <h1>Pond Phuwin Concert</h1>
+      <h1>POND PHUWIN Space Soul-dyssey CONCERT</h1>
       <p class="sub">พิมพ์โซนที่นั่งของคุณ ระบบจะปักหมุดให้อัตโนมัติ — ไปหลายวันหลายโซนก็กดเพิ่มได้เรื่อย ๆ</p>
       <div class="stats" id="stats"><span class="dot"></span><span id="statsText">กำลังโหลด...</span></div>
     </div>
@@ -49,9 +49,12 @@
       <input type="url" id="linkInput" placeholder="https://x.com/...">
       <label>วัน &amp; โซนที่นั่ง <span class="lbl-note">— เพิ่มได้หลายวัน/หลายโซน</span></label>
       <div class="seat-adder">
-        <div class="zone-field" id="zoneField">
-          <input type="text" id="zoneInput" autocomplete="off" maxlength="10" placeholder="โซน เช่น A3, SG, J">
-          <div class="zone-menu" id="zoneMenu"></div>
+        <div class="zone-row">
+          <div class="zone-field" id="zoneField">
+            <input type="text" id="zoneInput" autocomplete="off" maxlength="10" placeholder="โซน เช่น A3, SG, J">
+            <div class="zone-menu" id="zoneMenu"></div>
+          </div>
+          <input type="text" id="rowInput" maxlength="6" placeholder="แถว (ถ้ามี)">
         </div>
         <input type="date" id="dateInput">
         <button type="button" class="btn-add-seat" id="addSeatBtn">＋ เพิ่มวัน/โซนนี้</button>
@@ -101,6 +104,7 @@
   const zoneHint = document.getElementById('zoneHint');
   const nameInput = document.getElementById('nameInput');
   const dateInput = document.getElementById('dateInput');
+  const rowInput = document.getElementById('rowInput');
   const twitterInput = document.getElementById('twitterInput');
   const linkInput = document.getElementById('linkInput');
   const addSeatBtn = document.getElementById('addSeatBtn');
@@ -269,7 +273,7 @@
     let html = '<img src="'+marker.photo+'" alt="">' +
       '<div class="t-name">'+escapeHtml(marker.name)+'</div>';
     if(marker.zone){
-      html += '<div class="t-meta">📍 โซน '+escapeHtml(marker.zone)+'</div>';
+      html += '<div class="t-meta">📍 โซน '+escapeHtml(marker.zone)+(marker.seat_row?' · แถว '+escapeHtml(marker.seat_row):'')+'</div>';
     }
     if(marker.date){
       html += '<div class="t-meta">📅 '+escapeHtml(fmtDate(marker.date))+'</div>';
@@ -328,6 +332,7 @@
   function openModal(){
     modalOpen = true;
     zoneInput.value = '';
+    rowInput.value = '';
     zoneHint.textContent = '';
     zoneMenu.classList.remove('show');
     seatEntries = [];
@@ -397,7 +402,7 @@
     seatEntries.forEach((s, i)=>{
       const chip = document.createElement('div');
       chip.className = 'seat-chip';
-      chip.innerHTML = '<span>📍 '+escapeHtml(s.zone)+' · '+escapeHtml(fmtDate(s.date) || s.date)+'</span>';
+      chip.innerHTML = '<span>📍 '+escapeHtml(s.zone)+(s.row?' แถว '+escapeHtml(s.row):'')+' · '+escapeHtml(fmtDate(s.date) || s.date)+'</span>';
       const rm = document.createElement('button');
       rm.type = 'button';
       rm.textContent = '✕';
@@ -411,11 +416,13 @@
     if(!coord){ zoneHint.textContent = 'เลือกโซนให้ถูกก่อนนะ เช่น A3, SG, J'; return; }
     if(!dateInput.value){ zoneHint.textContent = 'ใส่วันที่ก่อนกดเพิ่ม'; return; }
     const zone = zoneInput.value.trim().toUpperCase();
-    if(!seatEntries.some(s => s.zone === zone && s.date === dateInput.value)){
-      seatEntries.push({ zone: zone, date: dateInput.value, x: coord[0], y: coord[1] });
+    const row = rowInput.value.trim().slice(0,6);
+    if(!seatEntries.some(s => s.zone === zone && s.date === dateInput.value && (s.row||'') === row)){
+      seatEntries.push({ zone: zone, row: row, date: dateInput.value, x: coord[0], y: coord[1] });
       renderSeatList();
     }
     zoneInput.value = '';
+    rowInput.value = '';
     dateInput.value = '';
     zoneHint.textContent = '';
     zoneMenu.classList.remove('show');
@@ -441,8 +448,9 @@
     const coord = lookupZone(zoneInput.value);
     if(coord && dateInput.value){
       const zone = zoneInput.value.trim().toUpperCase();
-      if(!entries.some(s => s.zone === zone && s.date === dateInput.value)){
-        entries.push({ zone: zone, date: dateInput.value, x: coord[0], y: coord[1] });
+      const row = rowInput.value.trim().slice(0,6);
+      if(!entries.some(s => s.zone === zone && s.date === dateInput.value && (s.row||'') === row)){
+        entries.push({ zone: zone, row: row, date: dateInput.value, x: coord[0], y: coord[1] });
       }
     }
     if(entries.length === 0) return;
@@ -458,6 +466,7 @@
       name: nm,
       photo: pendingPhoto,
       zone: s.zone,
+      seat_row: s.row || null,
       x: s.x,
       y: s.y,
       date: s.date,
@@ -721,6 +730,9 @@
   .seat-adder{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
   .seat-adder .zone-field{margin-bottom:0;}
   .seat-adder input[type="date"]{margin-bottom:0;}
+  .zone-row{display:flex;gap:8px;}
+  .zone-row .zone-field{flex:1;}
+  .zone-row #rowInput{width:110px;flex-shrink:0;margin-bottom:0 !important;}
   .btn-add-seat{
     background:rgba(52,232,213,0.12);
     border:1px solid var(--accent-cyan);

@@ -9,6 +9,7 @@ create table if not exists public.markers (
   name     text not null,
   photo    text,            -- รูปโปรไฟล์แบบ base64 (data URL)
   zone     text,
+  seat_row text,            -- แถวที่นั่ง (ไม่บังคับ)
   x        double precision,
   y        double precision,
   date     text,
@@ -18,8 +19,9 @@ create table if not exists public.markers (
   ts       bigint           -- เวลาที่ปัก (Date.now())
 );
 
--- ถ้าตารางมีอยู่แล้ว (สร้างก่อนหน้านี้) ให้เพิ่มคอลัมน์ owner ด้วยบรรทัดนี้:
+-- ถ้าตารางมีอยู่แล้ว (สร้างก่อนหน้านี้) ให้เพิ่มคอลัมน์ที่ขาดด้วย 2 บรรทัดนี้:
 alter table public.markers add column if not exists owner text;
+alter table public.markers add column if not exists seat_row text;
 
 -- เปิด Row Level Security
 alter table public.markers enable row level security;

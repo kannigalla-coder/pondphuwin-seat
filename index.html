@@ -238,15 +238,19 @@
     statsText.textContent = filtering
       ? ('แสดง ' + list.length + ' / ทั้งหมด ' + markers.length + ' คน')
       : (markers.length + ' คนปักหมุดแล้ว');
-    // จัดกลุ่มหมุดที่อยู่โซนเดียวกัน (พิกัดเดียวกัน) แล้วกระจายให้เบียดกันเป็นตาราง
+    // จัดกลุ่มหมุดตาม "ชื่อโซน" แล้วใช้พิกัดโซนปัจจุบันเสมอ
+    // (แก้ ZONE_COORDS แล้วหมุดเก่า+ใหม่ขยับตามทันที ไม่ยึดค่าที่เก็บในฐานข้อมูล)
     const groups = {};
     list.forEach(m=>{
-      const key = m.x + ',' + m.y;
-      (groups[key] = groups[key] || []).push(m);
+      const c = lookupZone(m.zone) || [m.x, m.y];
+      const key = c[0] + ',' + c[1];
+      if(!groups[key]) groups[key] = { coord: c, items: [] };
+      groups[key].items.push(m);
     });
     const STEP = 3.1;   // ระยะห่างระหว่างหมุด (% ของแผนที่)
     Object.keys(groups).forEach(key=>{
-      const g = groups[key];
+      const base = groups[key].coord;
+      const g = groups[key].items;
       const n = g.length;
       const cols = Math.ceil(Math.sqrt(n));
       const rows = Math.ceil(n / cols);
@@ -257,8 +261,8 @@
         const dy = (rowIdx - (rows - 1) / 2) * STEP;
         const pin = document.createElement('div');
         pin.className = 'pin' + (m.id === lastNewId ? ' new-pin' : '');
-        pin.style.left = (m.x + dx) + '%';
-        pin.style.top = (m.y + dy) + '%';
+        pin.style.left = (base[0] + dx) + '%';
+        pin.style.top = (base[1] + dy) + '%';
         pin.innerHTML = '<div class="pin-ring"><img src="'+m.photo+'" alt=""></div>';
         pin.addEventListener('click', (e)=>{
           e.stopPropagation();

@@ -56,7 +56,12 @@
           </div>
           <input type="text" id="rowInput" maxlength="6" placeholder="แถว (ถ้ามี)">
         </div>
-        <input type="date" id="dateInput">
+        <select id="dateInput">
+          <option value="">เลือกวันที่คอนเสิร์ต</option>
+          <option value="2026-08-21">21 ส.ค. 2569 (ศุกร์)</option>
+          <option value="2026-08-22">22 ส.ค. 2569 (เสาร์)</option>
+          <option value="2026-08-23">23 ส.ค. 2569 (อาทิตย์)</option>
+        </select>
         <button type="button" class="btn-add-seat" id="addSeatBtn">＋ เพิ่มวัน/โซนนี้</button>
       </div>
       <div class="zone-hint" id="zoneHint"></div>
@@ -121,21 +126,29 @@
 
   const STORAGE_KEY = 'seatmap-markers-pondphuwin';
 
-  // Approximate position (% of image width/height) for each seating zone
+// Approximate position (% of image width/height) for each seating zone
   const ZONE_COORDS = {
-    'A1':[36,34], 'A2':[43,31], 'A3':[57,31], 'A4':[64,34],
-    'B1':[35,47], 'B2':[50,50], 'B3':[65,47],
-    'C1':[36,57], 'C2':[50,58], 'C3':[64,57],
-    'FF':[46,63], 'FOH':[50,63], 'F.O.H':[50,63], 'HH':[57,63],
-    'SB':[18,28], 'SN':[82,28],
-    'SC':[21,37], 'SD':[19,46], 'SE':[18,55], 'SF':[19,64],
-    'SG':[39,74], 'SH':[50,75], 'SI':[61,74],
-    'SJ':[81,64], 'SK':[82,55], 'SL':[81,46], 'SM':[79,37],
-    'C':[13,36], 'D':[11,46], 'E':[10,55], 'F':[11,64],
-    'G':[14,72], 'H':[19,80], 'I':[25,87],
-    'J':[32,91], 'K':[50,93], 'L':[66,91],
-    'M':[68,88], 'N':[75,82], 'O':[86,73],
-    'P':[89,64], 'Q':[90,55], 'R':[89,46], 'S':[87,36]
+    'A1':[38.0,34.4], 'A2':[43.3,33.9], 'A3':[56.4,33.9], 'A4':[62.0,34.4],
+    'B1':[37.0,49.4], 'B2':[49.9,52.6], 'B3':[63.0,49.4],
+    'C1':[36.8,57.8], 'C2':[49.9,57.8], 'C3':[63.2,57.8],
+    'FF':[44.3,63.8], 'FOH':[49.9,63.8], 'F.O.H':[49.9,63.8], 'HH':[55.6,63.8],
+
+    'SB':[27.0,28.5], 'SN':[73.0,28.5],
+    'SC':[27.0,38.3], 'SM':[73.0,38.3],
+    'SD':[27.0,48.7], 'SL':[73.0,48.7],
+    'SE':[27.0,60.1], 'SK':[73.0,60.1],
+    'SF':[32.7,69.4], 'SJ':[67.3,69.4],
+    'SG':[41.4,74.6], 'SH':[49.9,74.6], 'SI':[58.6,74.6],
+
+    'C':[13.4,38.3], 'S':[86.6,38.3],
+    'D':[13.4,48.7], 'R':[86.6,48.7],
+    'E':[13.4,60.1], 'Q':[86.6,60.1],
+    'F':[15.6,67.9], 'P':[84.4,67.9],
+    'G':[18.9,76.0], 'O':[81.1,76.0],
+    'H':[24.8,82.5], 'N':[75.2,82.5],
+    'I':[32.7,86.4], 'M':[67.3,86.4],
+    'J':[41.6,87.9], 'L':[58.4,87.9],
+    'K':[49.9,88.4]
   };
   const ZONE_KEYS = Object.keys(ZONE_COORDS);
   function normZone(raw){
@@ -407,7 +420,7 @@
   });
 
   nameInput.addEventListener('input', checkFormValid);
-  dateInput.addEventListener('input', checkFormValid);
+  dateInput.addEventListener('change', checkFormValid);
   twitterInput.addEventListener('input', checkFormValid);
   zoneInput.addEventListener('input', ()=>{
     renderZoneMenu();
@@ -710,7 +723,8 @@
   .photo-picker img{width:100%;height:100%;object-fit:cover;}
   .modal input[type="text"],
   .modal input[type="date"],
-  .modal input[type="url"]{
+  .modal input[type="url"],
+  .modal select{
     width:100%;
     background:rgba(255,255,255,0.05);
     border:1px solid var(--panel-line);
@@ -722,8 +736,9 @@
     margin-bottom:16px;
     outline:none;
     color-scheme:dark;
+    cursor:pointer;
   }
-  .modal input:focus{border-color:var(--accent-cyan);}
+  .modal input:focus,.modal select:focus{border-color:var(--accent-cyan);}
   .modal input::placeholder{color:var(--text-dim);}
   .zone-field{position:relative;margin-bottom:16px;}
   .zone-field input{margin-bottom:0 !important;}
@@ -751,7 +766,7 @@
   .lbl-note{color:var(--text-dim);font-weight:400;font-size:11px;}
   .seat-adder{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
   .seat-adder .zone-field{margin-bottom:0;}
-  .seat-adder input[type="date"]{margin-bottom:0;}
+  .seat-adder input[type="date"],.seat-adder select{margin-bottom:0;}
   .zone-row{display:flex;gap:8px;}
   .zone-row .zone-field{flex:1;}
   .zone-row #rowInput{width:110px;flex-shrink:0;margin-bottom:0 !important;}

@@ -14,8 +14,12 @@ create table if not exists public.markers (
   date     text,
   twitter  text,
   link     text,
+  owner    text,            -- รหัสเจ้าของ (เก็บใน localStorage ของแต่ละเครื่อง) ใช้จำกัดสิทธิ์ลบ
   ts       bigint           -- เวลาที่ปัก (Date.now())
 );
+
+-- ถ้าตารางมีอยู่แล้ว (สร้างก่อนหน้านี้) ให้เพิ่มคอลัมน์ owner ด้วยบรรทัดนี้:
+alter table public.markers add column if not exists owner text;
 
 -- เปิด Row Level Security
 alter table public.markers enable row level security;

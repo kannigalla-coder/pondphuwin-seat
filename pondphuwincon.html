@@ -236,6 +236,36 @@
     cursor:pointer;
   }
   .zone-opt:hover,.zone-opt.active{background:rgba(255,255,255,0.08);}
+  .lbl-note{color:var(--text-dim);font-weight:400;font-size:11px;}
+  .seat-adder{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+  .seat-adder .zone-field{margin-bottom:0;}
+  .seat-adder input[type="date"]{margin-bottom:0;}
+  .btn-add-seat{
+    background:rgba(52,232,213,0.12);
+    border:1px solid var(--accent-cyan);
+    color:var(--accent-cyan);
+    font-family:'Kanit',sans-serif;
+    font-size:14px;
+    padding:10px;
+    border-radius:12px;
+    cursor:pointer;
+  }
+  .btn-add-seat:active{transform:scale(0.98);}
+  .seat-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .seat-list:empty{margin:0;}
+  .seat-chip{
+    display:inline-flex;align-items:center;gap:8px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid var(--panel-line);
+    border-radius:999px;
+    padding:6px 8px 6px 12px;
+    font-size:13px;color:var(--text-main);
+  }
+  .seat-chip button{
+    background:none;border:none;color:var(--text-dim);
+    cursor:pointer;font-size:15px;line-height:1;padding:0 2px;
+  }
+  .seat-chip button:hover{color:var(--accent-pink);}
   .zone-hint{
     font-size:11px;
     color:var(--accent-pink);
@@ -328,20 +358,23 @@
         <span id="photoPlaceholder">แตะเพื่อเลือกรูป</span>
       </div>
       <input type="file" id="photoInput" accept="image/*" hidden>
-      <label>โซนที่นั่ง</label>
-      <div class="zone-field" id="zoneField">
-        <input type="text" id="zoneInput" autocomplete="off" maxlength="10" placeholder="พิมพ์โซน เช่น A3, SG, J">
-        <div class="zone-menu" id="zoneMenu"></div>
-      </div>
-      <div class="zone-hint" id="zoneHint"></div>
       <label>ชื่อ / ชื่อเล่น</label>
-      <input type="text" id="nameInput" maxlength="24" placeholder="เช่น มิว โซน A3">
-      <label>วันที่คอนเสิร์ต</label>
-      <input type="date" id="dateInput">
+      <input type="text" id="nameInput" maxlength="24" placeholder="เช่น มิว">
       <label>ทวิตเตอร์ (X)</label>
       <input type="text" id="twitterInput" maxlength="30" placeholder="@username">
       <label>ลิงก์ (ถ้ามี — เช่น โปรไฟล์ หรือทวีตนัดเจอ)</label>
       <input type="url" id="linkInput" placeholder="https://x.com/...">
+      <label>วัน &amp; โซนที่นั่ง <span class="lbl-note">— เพิ่มได้หลายวัน/หลายโซน</span></label>
+      <div class="seat-adder">
+        <div class="zone-field" id="zoneField">
+          <input type="text" id="zoneInput" autocomplete="off" maxlength="10" placeholder="โซน เช่น A3, SG, J">
+          <div class="zone-menu" id="zoneMenu"></div>
+        </div>
+        <input type="date" id="dateInput">
+        <button type="button" class="btn-add-seat" id="addSeatBtn">＋ เพิ่มวัน/โซนนี้</button>
+      </div>
+      <div class="zone-hint" id="zoneHint"></div>
+      <div class="seat-list" id="seatList"></div>
       <div class="modal-actions">
         <button class="btn-ghost" id="cancelBtn">ยกเลิก</button>
         <button class="btn-solid" id="saveBtn" disabled>ปักหมุด</button>
@@ -377,6 +410,8 @@
   const dateInput = document.getElementById('dateInput');
   const twitterInput = document.getElementById('twitterInput');
   const linkInput = document.getElementById('linkInput');
+  const addSeatBtn = document.getElementById('addSeatBtn');
+  const seatList = document.getElementById('seatList');
   const cancelBtn = document.getElementById('cancelBtn');
   const saveBtn = document.getElementById('saveBtn');
   const tooltip = document.getElementById('tooltip');
@@ -434,6 +469,7 @@
   }
 
   let markers = [];
+  let seatEntries = [];   // รายการ วัน+โซน ของคนที่กำลังปัก (ไปหลายวัน/หลายโซน)
   let pendingPhoto = null;
   let lastNewId = null;
   let modalOpen = false;
@@ -541,6 +577,8 @@
     zoneInput.value = '';
     zoneHint.textContent = '';
     zoneMenu.classList.remove('show');
+    seatEntries = [];
+    renderSeatList();
     nameInput.value = '';
     dateInput.value = '';
     twitterInput.value = '';
@@ -549,6 +587,7 @@
     photoPreview.hidden = true;
     photoPlaceholder.hidden = false;
     saveBtn.disabled = true;
+    saveBtn.textContent = 'ปักหมุด';
     modalBackdrop.classList.add('show');
   }
   function closeModal(){
@@ -600,50 +639,91 @@
     }
     checkFormValid();
   });
+  function renderSeatList(){
+    seatList.innerHTML = '';
+    seatEntries.forEach((s, i)=>{
+      const chip = document.createElement('div');
+      chip.className = 'seat-chip';
+      chip.innerHTML = '<span>📍 '+escapeHtml(s.zone)+' · '+escapeHtml(fmtDate(s.date) || s.date)+'</span>';
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.textContent = '✕';
+      rm.addEventListener('click', ()=>{ seatEntries.splice(i,1); renderSeatList(); checkFormValid(); });
+      chip.appendChild(rm);
+      seatList.appendChild(chip);
+    });
+  }
+  function addSeat(){
+    const coord = lookupZone(zoneInput.value);
+    if(!coord){ zoneHint.textContent = 'เลือกโซนให้ถูกก่อนนะ เช่น A3, SG, J'; return; }
+    if(!dateInput.value){ zoneHint.textContent = 'ใส่วันที่ก่อนกดเพิ่ม'; return; }
+    const zone = zoneInput.value.trim().toUpperCase();
+    if(!seatEntries.some(s => s.zone === zone && s.date === dateInput.value)){
+      seatEntries.push({ zone: zone, date: dateInput.value, x: coord[0], y: coord[1] });
+      renderSeatList();
+    }
+    zoneInput.value = '';
+    dateInput.value = '';
+    zoneHint.textContent = '';
+    zoneMenu.classList.remove('show');
+    zoneInput.focus();
+    checkFormValid();
+  }
+  addSeatBtn.addEventListener('click', addSeat);
+
   function checkFormValid(){
-    saveBtn.disabled = !(
-      pendingPhoto &&
-      lookupZone(zoneInput.value) &&
+    const profileOK = pendingPhoto &&
       nameInput.value.trim().length > 0 &&
-      dateInput.value.length > 0 &&
-      twitterInput.value.trim().length > 0
-    );
+      twitterInput.value.trim().length > 0;
+    const currentValid = !!lookupZone(zoneInput.value) && dateInput.value.length > 0;
+    const count = seatEntries.length + (currentValid ? 1 : 0);
+    saveBtn.disabled = !(profileOK && count > 0);
+    saveBtn.textContent = count > 1 ? ('ปักหมุด ('+count+' จุด)') : 'ปักหมุด';
   }
 
   saveBtn.addEventListener('click', async ()=>{
-    const zoneCoord = lookupZone(zoneInput.value);
-    if(!zoneCoord || !pendingPhoto || !nameInput.value.trim() || !dateInput.value || !twitterInput.value.trim()) return;
+    if(!pendingPhoto || !nameInput.value.trim() || !twitterInput.value.trim()) return;
+    // รวมรายการที่เพิ่มไว้ + ช่องที่กรอกค้างไว้แต่ยังไม่กด "เพิ่ม"
+    const entries = seatEntries.slice();
+    const coord = lookupZone(zoneInput.value);
+    if(coord && dateInput.value){
+      const zone = zoneInput.value.trim().toUpperCase();
+      if(!entries.some(s => s.zone === zone && s.date === dateInput.value)){
+        entries.push({ zone: zone, date: dateInput.value, x: coord[0], y: coord[1] });
+      }
+    }
+    if(entries.length === 0) return;
     saveBtn.disabled = true;
     saveBtn.textContent = 'กำลังบันทึก...';
-    const id = (crypto.randomUUID ? crypto.randomUUID() : 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2));
     let twHandle = twitterInput.value.trim().replace(/^@/,'').slice(0,30);
     let linkVal = linkInput.value.trim();
     if(linkVal && !/^https?:\/\//i.test(linkVal)) linkVal = 'https://' + linkVal;
-    const marker = {
-      id: id,
-      name: nameInput.value.trim().slice(0,24),
+    const nm = nameInput.value.trim().slice(0,24);
+    const baseTs = Date.now();
+    const newMarkers = entries.map((s, i)=>({
+      id: (crypto.randomUUID ? crypto.randomUUID() : 'm-' + baseTs + '-' + i + '-' + Math.random().toString(36).slice(2)),
+      name: nm,
       photo: pendingPhoto,
-      zone: zoneInput.value.trim().toUpperCase(),
-      x: zoneCoord[0],
-      y: zoneCoord[1],
-      date: dateInput.value,
+      zone: s.zone,
+      x: s.x,
+      y: s.y,
+      date: s.date,
       twitter: twHandle,
       link: linkVal || null,
-      ts: Date.now()
-    };
-    const { error } = await sb.from('markers').insert(marker);
+      ts: baseTs + i
+    }));
+    const { error } = await sb.from('markers').insert(newMarkers);
     if(error){
-      saveBtn.disabled = false;
-      saveBtn.textContent = 'ปักหมุด';
+      checkFormValid();
       showToast('บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
       return;
     }
-    markers.push(marker);
-    lastNewId = id;
+    newMarkers.forEach(m => markers.push(m));
+    lastNewId = newMarkers[newMarkers.length - 1].id;
     render();
     closeModal();
     saveBtn.textContent = 'ปักหมุด';
-    showToast('ปักหมุดเรียบร้อย!');
+    showToast(newMarkers.length > 1 ? ('ปักหมุด '+newMarkers.length+' จุดเรียบร้อย!') : 'ปักหมุดเรียบร้อย!');
   });
 
   setInterval(()=>{
